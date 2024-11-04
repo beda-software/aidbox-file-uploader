@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 
 from aiobotocore.session import get_session
 
@@ -8,8 +9,13 @@ from app import config
 async def go() -> None:
     bucket = "dataintake"
     filename = "file"
+
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    filename_with_timestamp = f"{filename}-{timestamp}.txt"
+
+    # print(filename_with_timestamp)
     folder = "aiobotocore"
-    key = f"{folder}/{filename}"
+    key = f"{folder}/{filename_with_timestamp}"
 
     # print(config.region_name)
     # print(config.link_ttl)
