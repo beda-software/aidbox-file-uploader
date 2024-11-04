@@ -12,6 +12,8 @@ aidbox-python-sdk = "^0.1.12"
 gunicorn = "^22.0.0"
 fhirpy = "^2.0.14"
 fhirpy-types-r4b = "^0.1.0"
+aiobotocore = "^2.15.2"
+
 
 [tool.poetry.group.dev.dependencies]
 anaconda = "^0.0.1.1"
