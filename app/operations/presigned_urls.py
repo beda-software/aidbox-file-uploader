@@ -7,17 +7,31 @@ from aiohttp import web
 from app import config
 from app.sdk import sdk
 
+schema = {
+    "required": ["params", "resource"],
+    "properties": {
+        "resource": {
+            "type": "object",
+            "required": [],
+            "properties": {
+                "filename": {"type": "string"},
+            },
+            "additionalProperties": False,
+        },
+    },
+}
 
-@sdk.operation(["POST"], ["$get-presigned-urls"])
+
+@sdk.operation(["POST"], ["$get-presigned-urls"], request_schema=schema)
 async def generate_presigned_urls_op(
     _operation: SDKOperation, request: SDKOperationRequest
 ) -> web.Response:
-    bucket = "dataintake"
-    filename = "file"
-
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    bucket = config.aws_bucket
+    # TODO
+    filename = request["resource"]["filename"]
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
     filename_with_timestamp = f"{filename}-{timestamp}.txt"
-    folder = "aiobotocore"
+    folder = config.bucket_prefix
     key = f"{folder}/{filename_with_timestamp}"
 
     session = get_session()
@@ -27,7 +41,6 @@ async def generate_presigned_urls_op(
         region_name=config.region_name,
         aws_access_key_id=config.aws_access_key_id,
         aws_secret_access_key=config.aws_secret_acceess_key,
-        endpoint_url=config.minio_endpoint,
     ) as client:
         put_presigned_url = await client.generate_presigned_url(
             "put_object",
@@ -43,7 +56,7 @@ async def generate_presigned_urls_op(
 
     return web.json_response(
         {
-            "status": "ok",
+            "filename": filename,
             "put_presigned_url": put_presigned_url,
             "get_presigned_url": get_presigned_url,
         }
