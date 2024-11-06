@@ -28,9 +28,10 @@ async def generate_presigned_urls_op(
 ) -> web.Response:
     bucket = config.aws_bucket
     # TODO
-    filename = request["resource"]["filename"]
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
-    filename_with_timestamp = f"{filename}-{timestamp}.txt"
+    filename = request["resource"]["filename"]
+    name, extension = filename.rsplit(".", 1)
+    filename_with_timestamp = f"{name}-{timestamp}.{extension}"
     folder = config.bucket_prefix
     key = f"{folder}/{filename_with_timestamp}"
 
