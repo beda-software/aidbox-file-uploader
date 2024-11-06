@@ -8,7 +8,7 @@ from app import config
 from app.sdk import sdk
 
 schema = {
-    "required": ["params", "resource"],
+    "required": [],
     "properties": {
         "resource": {
             "type": "object",
@@ -29,7 +29,7 @@ async def generate_presigned_urls_op(
     bucket = config.aws_bucket
     # TODO
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
-    filename = request["resource"]["filename"]
+    filename = request.get("resource", {}).get("filename", "file.jpg")
     name, extension = filename.rsplit(".", 1)
     filename_with_timestamp = f"{name}-{timestamp}.{extension}"
     folder = config.bucket_prefix
