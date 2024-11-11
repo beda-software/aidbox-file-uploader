@@ -7,4 +7,4 @@ bucket_prefix = os.environ.get("BUCKET_PREFIX", "aiobotocore")
 link_ttl = int(os.environ.get("LINK_TTL", "600"))
 region_name = os.environ["REGION_NAME"]
 aws_access_key_id = os.environ["AWS_ACCESS_KEY_ID"]
-aws_secret_acceess_key = os.environ["AWS_SECRET_ACCESS_KEY"]
+aws_secret_access_key = os.environ["AWS_SECRET_ACCESS_KEY"]

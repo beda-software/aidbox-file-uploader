@@ -7,7 +7,7 @@ from aiohttp import web
 from app import config
 from app.sdk import sdk
 
-schema = {
+upload_schema = {
     "required": [],
     "properties": {
         "resource": {
@@ -21,13 +21,26 @@ schema = {
     },
 }
 
+download_schema = {
+    "required": [],
+    "properties": {
+        "resource": {
+            "type": "object",
+            "required": [],
+            "properties": {
+                "key": {"type": "string"},
+            },
+            "additionalProperties": False,
+        },
+    },
+}
 
-@sdk.operation(["POST"], ["$get-presigned-urls"], request_schema=schema)
-async def generate_presigned_urls_op(
+
+@sdk.operation(["POST"], ["$generate-upload-url"], request_schema=upload_schema)
+async def generate_upload_url_op(
     _operation: SDKOperation, request: SDKOperationRequest
 ) -> web.Response:
     bucket = config.aws_bucket
-    # TODO
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
     filename = request.get("resource", {}).get("filename", "file.jpg")
     name, extension = filename.rsplit(".", 1)
@@ -41,16 +54,10 @@ async def generate_presigned_urls_op(
         "s3",
         region_name=config.region_name,
         aws_access_key_id=config.aws_access_key_id,
-        aws_secret_access_key=config.aws_secret_acceess_key,
+        aws_secret_access_key=config.aws_secret_access_key,
     ) as client:
         put_presigned_url = await client.generate_presigned_url(
             "put_object",
-            Params={"Bucket": bucket, "Key": key},
-            ExpiresIn=config.link_ttl,
-        )
-
-        get_presigned_url = await client.generate_presigned_url(
-            "get_object",
             Params={"Bucket": bucket, "Key": key},
             ExpiresIn=config.link_ttl,
         )
@@ -59,6 +66,33 @@ async def generate_presigned_urls_op(
         {
             "filename": filename,
             "put_presigned_url": put_presigned_url,
+        }
+    )
+
+
+@sdk.operation(["POST"], ["$generate-download-url"], request_schema=download_schema)
+async def generate_download_url_op(
+    _operation: SDKOperation, request: SDKOperationRequest
+) -> web.Response:
+    bucket = config.aws_bucket
+    key = request.get("resource", {}).get("key")
+
+    session = get_session()
+
+    async with session.create_client(
+        "s3",
+        region_name=config.region_name,
+        aws_access_key_id=config.aws_access_key_id,
+        aws_secret_access_key=config.aws_secret_access_key,
+    ) as client:
+        get_presigned_url = await client.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": bucket, "Key": key},
+            ExpiresIn=config.link_ttl,
+        )
+
+    return web.json_response(
+        {
             "get_presigned_url": get_presigned_url,
         }
     )
