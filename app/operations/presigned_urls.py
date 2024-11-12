@@ -42,7 +42,7 @@ async def generate_upload_url_op(
 ) -> web.Response:
     bucket = config.aws_bucket
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
-    filename = request.get("resource", {}).get("filename", "file.jpg")
+    filename = request.get("resource", {}).get("filename", "file.txt")
     name, extension = filename.rsplit(".", 1)
     filename_with_timestamp = f"{name}-{timestamp}.{extension}"
     folder = config.bucket_prefix
@@ -55,10 +55,12 @@ async def generate_upload_url_op(
         region_name=config.region_name,
         aws_access_key_id=config.aws_access_key_id,
         aws_secret_access_key=config.aws_secret_access_key,
+        endpoint_url=config.minio_endpoint,
     ) as client:
+
         put_presigned_url = await client.generate_presigned_url(
             "put_object",
-            Params={"Bucket": bucket, "Key": key},
+            Params={"Bucket": bucket, "Key": key, "ContentType": "application/octet-stream"},
             ExpiresIn=config.link_ttl,
         )
 
