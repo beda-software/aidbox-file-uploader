@@ -1,1 +1,1 @@
-from . import example  # noqa: F401
+from . import presigned_urls  # noqa: F401
