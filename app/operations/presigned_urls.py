@@ -66,7 +66,7 @@ async def generate_upload_url_op(
 
     return web.json_response(
         {
-            "filename": filename,
+            "filename": key,
             "put_presigned_url": put_presigned_url,
         }
     )
