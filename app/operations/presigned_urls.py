@@ -86,6 +86,7 @@ async def generate_download_url_op(
         region_name=config.region_name,
         aws_access_key_id=config.aws_access_key_id,
         aws_secret_access_key=config.aws_secret_access_key,
+        endpoint_url=config.minio_endpoint,
     ) as client:
         get_presigned_url = await client.generate_presigned_url(
             "get_object",
