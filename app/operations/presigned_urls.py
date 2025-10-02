@@ -36,6 +36,7 @@ download_schema = {
 }
 
 
+@sdk.operation(["POST"], ["fhir", "$generate-upload-url"], request_schema=upload_schema)
 @sdk.operation(["POST"], ["$generate-upload-url"], request_schema=upload_schema)
 async def generate_upload_url_op(
     _operation: SDKOperation, request: SDKOperationRequest
@@ -72,6 +73,7 @@ async def generate_upload_url_op(
     )
 
 
+@sdk.operation(["POST"], ["fhir", "$generate-download-url"], request_schema=download_schema)
 @sdk.operation(["POST"], ["$generate-download-url"], request_schema=download_schema)
 async def generate_download_url_op(
     _operation: SDKOperation, request: SDKOperationRequest
