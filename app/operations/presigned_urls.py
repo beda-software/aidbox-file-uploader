@@ -3,6 +3,9 @@ from datetime import datetime
 from aidbox_python_sdk.types import SDKOperation, SDKOperationRequest
 from aiobotocore.session import get_session
 from aiohttp import web
+from botocore.awsrequest import AWSRequest
+from botocore.auth import SigV4Auth
+from botocore.credentials import Credentials
 
 from app import config
 from app.sdk import sdk
@@ -101,3 +104,32 @@ async def generate_download_url_op(
             "get_presigned_url": get_presigned_url,
         }
     )
+
+
+@sdk.operation(["POST"], ["fhir", "$generate-download-headers"], request_schema=download_schema)
+@sdk.operation(["POST"], ["$generate-download-headers"], request_schema=download_schema)
+async def generate_download_headers_op(
+    _operation: SDKOperation, request: SDKOperationRequest
+) -> web.Response:
+    bucket = config.aws_bucket
+    key = request.get("resource", {}).get("key")
+
+    url = f"{config.minio_endpoint}/{bucket}/{key}"
+    credentials = Credentials(
+        access_key=config.aws_access_key_id,
+        secret_key=config.aws_secret_access_key,
+    )
+    headers = {
+        "x-amz-content-sha256": "UNSIGNED-PAYLOAD",
+    }
+
+    aws_request = AWSRequest(
+        method="GET",
+        url=url,
+        headers=headers,
+    )
+
+    signer = SigV4Auth(credentials, "s3", config.region_name)
+    signer.add_auth(aws_request)
+
+    return web.json_response(dict(aws_request.headers))
