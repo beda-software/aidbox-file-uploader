@@ -18,6 +18,7 @@ upload_schema = {
             "required": [],
             "properties": {
                 "filename": {"type": "string"},
+                "contentType": {"type": "string"},
             },
             "additionalProperties": False,
         },
@@ -32,7 +33,6 @@ download_schema = {
             "required": [],
             "properties": {
                 "key": {"type": "string"},
-                "contentDisposition": {"type": "string"},
                 "contentType": {"type": "string"},
             },
             "additionalProperties": False,
@@ -47,8 +47,10 @@ async def generate_upload_url_op(
     _operation: SDKOperation, request: SDKOperationRequest
 ) -> web.Response:
     bucket = config.aws_bucket
+    resource = request.get("resource", {})
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
-    filename = request.get("resource", {}).get("filename", "file.txt")
+    filename = resource.get("filename", "file.txt")
+    content_type = resource.get("contentType") or "application/octet-stream"
     name, extension = filename.rsplit(".", 1)
     filename_with_timestamp = f"{name}-{timestamp}.{extension}"
     folder = config.bucket_prefix
@@ -66,7 +68,7 @@ async def generate_upload_url_op(
 
         put_presigned_url = await client.generate_presigned_url(
             "put_object",
-            Params={"Bucket": bucket, "Key": key, "ContentType": "application/octet-stream"},
+            Params={"Bucket": bucket, "Key": key, "ContentType": content_type},
             ExpiresIn=config.link_ttl,
         )
 
@@ -88,8 +90,6 @@ async def generate_download_url_op(
     key = resource.get("key")
 
     params = {"Bucket": bucket, "Key": key}
-    if resource.get("contentDisposition"):
-        params["ResponseContentDisposition"] = resource["contentDisposition"]
     if resource.get("contentType"):
         params["ResponseContentType"] = resource["contentType"]
 
