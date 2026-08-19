@@ -32,6 +32,8 @@ download_schema = {
             "required": [],
             "properties": {
                 "key": {"type": "string"},
+                "contentDisposition": {"type": "string"},
+                "contentType": {"type": "string"},
             },
             "additionalProperties": False,
         },
@@ -82,7 +84,14 @@ async def generate_download_url_op(
     _operation: SDKOperation, request: SDKOperationRequest
 ) -> web.Response:
     bucket = config.aws_bucket
-    key = request.get("resource", {}).get("key")
+    resource = request.get("resource", {})
+    key = resource.get("key")
+
+    params = {"Bucket": bucket, "Key": key}
+    if resource.get("contentDisposition"):
+        params["ResponseContentDisposition"] = resource["contentDisposition"]
+    if resource.get("contentType"):
+        params["ResponseContentType"] = resource["contentType"]
 
     session = get_session()
 
@@ -95,7 +104,7 @@ async def generate_download_url_op(
     ) as client:
         get_presigned_url = await client.generate_presigned_url(
             "get_object",
-            Params={"Bucket": bucket, "Key": key},
+            Params=params,
             ExpiresIn=config.link_ttl,
         )
 
