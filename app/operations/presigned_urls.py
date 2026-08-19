@@ -18,7 +18,7 @@ upload_schema = {
             "required": [],
             "properties": {
                 "filename": {"type": "string"},
-                "contentType": {"type": "string"},
+                "content_type": {"type": "string"},
             },
             "additionalProperties": False,
         },
@@ -33,7 +33,7 @@ download_schema = {
             "required": [],
             "properties": {
                 "key": {"type": "string"},
-                "contentType": {"type": "string"},
+                "content_type": {"type": "string"},
             },
             "additionalProperties": False,
         },
@@ -50,7 +50,7 @@ async def generate_upload_url_op(
     resource = request.get("resource", {})
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
     filename = resource.get("filename", "file.txt")
-    content_type = resource.get("contentType") or "application/octet-stream"
+    content_type = resource.get("content_type") or "application/octet-stream"
     name, extension = filename.rsplit(".", 1)
     filename_with_timestamp = f"{name}-{timestamp}.{extension}"
     folder = config.bucket_prefix
@@ -90,8 +90,8 @@ async def generate_download_url_op(
     key = resource.get("key")
 
     params = {"Bucket": bucket, "Key": key}
-    if resource.get("contentType"):
-        params["ResponseContentType"] = resource["contentType"]
+    if resource.get("content_type"):
+        params["ResponseContentType"] = resource["content_type"]
 
     session = get_session()
 
