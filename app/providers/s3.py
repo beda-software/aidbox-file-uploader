@@ -19,9 +19,12 @@ async def generate_signed_url(
         endpoint_url=config.minio_endpoint,
     ) as client:
         if method == "PUT":
+            params = {"Bucket": bucket, "Key": key}
+            if content_type:
+                params["ContentType"] = content_type
             return await client.generate_presigned_url(
                 "put_object",
-                Params={"Bucket": bucket, "Key": key, "ContentType": content_type},
+                Params=params,
                 ExpiresIn=config.link_ttl,
             )
 
