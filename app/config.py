@@ -10,3 +10,8 @@ region_name = os.environ.get("REGION_NAME")
 aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
 aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
 minio_endpoint = os.environ.get("MINIO_ENDPOINT")
+
+# "static" signs with AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY (AWS S3, MinIO, GCS with an HMAC key).
+# "gcs_impersonation" signs via GCS's IAM signBlob API using ambient credentials
+# (e.g. GKE Workload Identity) instead of a static key.
+signing_mode = os.environ.get("SIGNING_MODE", "static")
