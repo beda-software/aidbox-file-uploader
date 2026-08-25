@@ -24,11 +24,11 @@ upload_schema = {
 }
 
 download_schema = {
-    "required": [],
+    "required": ["resource"],
     "properties": {
         "resource": {
             "type": "object",
-            "required": [],
+            "required": ["key"],
             "properties": {
                 "key": {"type": "string"},
                 "content_type": {"type": "string"},
@@ -70,12 +70,9 @@ async def generate_download_url_op(
     _operation: SDKOperation, request: SDKOperationRequest
 ) -> web.Response:
     bucket = config.aws_bucket
-    resource = request.get("resource", {})
-    key = resource.get("key")
+    resource = request["resource"]
+    key = resource["key"]
     content_type = resource.get("content_type")
-
-    if not key:
-        raise web.HTTPBadRequest(reason="resource.key is required")
 
     get_presigned_url = await generate_signed_url(bucket, key, "GET", content_type=content_type)
 
@@ -102,10 +99,7 @@ async def generate_download_headers_op(
     _operation: SDKOperation, request: SDKOperationRequest
 ) -> web.Response:
     bucket = config.aws_bucket
-    key = request.get("resource", {}).get("key")
-
-    if not key:
-        raise web.HTTPBadRequest(reason="resource.key is required")
+    key = request["resource"]["key"]
 
     headers = await generate_download_headers(bucket, key)
 
