@@ -2,7 +2,7 @@ import os
 
 is_test_environment = os.environ.get("TEST_ENV", False)
 
-aws_bucket = os.environ.get("AWS_BUCKET", "dataintake")
+aws_bucket = os.environ.get("BUCKET") or os.environ.get("AWS_BUCKET", "dataintake")
 bucket_prefix = os.environ.get("BUCKET_PREFIX", "aiobotocore")
 link_ttl = int(os.environ.get("LINK_TTL", "600"))
 

@@ -1,5 +1,19 @@
 # aidbox-python-sdk-example
 
+## Signing modes
+
+`SIGNING_MODE` controls how presigned upload/download URLs and headers are signed.
+
+| Mode | Default | Use for | Extra env vars needed |
+|---|---|---|---|
+| `static` | yes | AWS S3, MinIO, GCS with an HMAC key | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `MINIO_ENDPOINT`, `REGION_NAME` |
+| `gcs-impersonation` | no | GCS only, no static keys (e.g. GKE Workload Identity) | none — signs via ambient credentials + IAM `signBlob` |
+
+Common to both modes:
+- `BUCKET` (or `AWS_BUCKET`, kept for existing deployments — `BUCKET` wins if both are set) — bucket name, required.
+- `BUCKET_PREFIX` — key prefix, default `aiobotocore` (historical, kept for backward compat).
+- `LINK_TTL` — presigned URL/header validity in seconds, default `600`.
+
 # Development
 
 ## Local environment setup
