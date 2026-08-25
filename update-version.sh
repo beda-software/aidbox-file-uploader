@@ -4,4 +4,4 @@
 VERSION=$1
 
 # Shared
-sed -i -e "s/__version__ = .*/__version__ = '$VERSION'/g" app/version.py
+sed -i -e "s/__version__ = .*/__version__ = \"$VERSION\"/g" app/version.py

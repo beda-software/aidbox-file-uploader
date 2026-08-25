@@ -14,7 +14,7 @@ class SafeDBFixture(Protocol):
     pass
 
 
-@pytest.fixture()
+@pytest.fixture
 def fhir_client(client: TestClient) -> AsyncFHIRClient:
     app: web.Application = client.server.app  # type: ignore
 
