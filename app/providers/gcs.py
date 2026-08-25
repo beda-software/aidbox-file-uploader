@@ -57,7 +57,7 @@ def sign_download_headers(bucket: str, key: str) -> dict[str, str]:
     service_account_email = getattr(credentials, "service_account_email", None)
     if not service_account_email:
         raise RuntimeError(
-            "gcs_impersonation signing requires Compute Engine (Workload Identity) credentials"
+            "gcs-impersonation signing requires Compute Engine (Workload Identity) credentials"
         )
     signer = google_auth_iam.Signer(request, credentials, service_account_email)
 

@@ -86,7 +86,7 @@ async def generate_download_url_op(
 async def generate_signed_url(
     bucket: str, key: str, method: str, content_type: str | None = None
 ) -> str:
-    if config.signing_mode == "gcs_impersonation":
+    if config.signing_mode == config.GCS_IMPERSONATION:
         return await gcs_provider.generate_signed_url(
             bucket, key, method, content_type=content_type
         )
@@ -107,6 +107,6 @@ async def generate_download_headers_op(
 
 
 async def generate_download_headers(bucket: str, key: str) -> dict[str, str]:
-    if config.signing_mode == "gcs_impersonation":
+    if config.signing_mode == config.GCS_IMPERSONATION:
         return await gcs_provider.generate_download_headers(bucket, key)
     return s3_provider.generate_download_headers(bucket, key)
