@@ -13,6 +13,7 @@ gunicorn = "^22.0.0"
 fhirpy = "^2.0.14"
 fhirpy-types-r4b = "^0.1.1"
 aiobotocore = "^2.15.2"
+google-cloud-storage = "^3.13.1"
 
 [tool.poetry.group.dev.dependencies]
 anaconda = "^0.0.1.1"

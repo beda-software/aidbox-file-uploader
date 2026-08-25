@@ -1,13 +1,11 @@
 from datetime import datetime
 
 from aidbox_python_sdk.types import SDKOperation, SDKOperationRequest
-from aiobotocore.session import get_session
 from aiohttp import web
-from botocore.awsrequest import AWSRequest
-from botocore.auth import SigV4Auth
-from botocore.credentials import Credentials
 
 from app import config
+from app.providers import gcs as gcs_provider
+from app.providers import s3 as s3_provider
 from app.sdk import sdk
 
 upload_schema = {
@@ -26,11 +24,11 @@ upload_schema = {
 }
 
 download_schema = {
-    "required": [],
+    "required": ["resource"],
     "properties": {
         "resource": {
             "type": "object",
-            "required": [],
+            "required": ["key"],
             "properties": {
                 "key": {"type": "string"},
                 "content_type": {"type": "string"},
@@ -51,26 +49,15 @@ async def generate_upload_url_op(
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
     filename = resource.get("filename", "file.txt")
     content_type = resource.get("content_type") or "application/octet-stream"
-    name, extension = filename.rsplit(".", 1)
-    filename_with_timestamp = f"{name}-{timestamp}.{extension}"
+    if "." in filename:
+        name, extension = filename.rsplit(".", 1)
+        filename_with_timestamp = f"{name}-{timestamp}.{extension}"
+    else:
+        filename_with_timestamp = f"{filename}-{timestamp}"
     folder = config.bucket_prefix
     key = f"{folder}/{filename_with_timestamp}"
 
-    session = get_session()
-
-    async with session.create_client(
-        "s3",
-        region_name=config.region_name,
-        aws_access_key_id=config.aws_access_key_id,
-        aws_secret_access_key=config.aws_secret_access_key,
-        endpoint_url=config.minio_endpoint,
-    ) as client:
-
-        put_presigned_url = await client.generate_presigned_url(
-            "put_object",
-            Params={"Bucket": bucket, "Key": key, "ContentType": content_type},
-            ExpiresIn=config.link_ttl,
-        )
+    put_presigned_url = await generate_signed_url(bucket, key, "PUT", content_type=content_type)
 
     return web.json_response(
         {
@@ -86,27 +73,11 @@ async def generate_download_url_op(
     _operation: SDKOperation, request: SDKOperationRequest
 ) -> web.Response:
     bucket = config.aws_bucket
-    resource = request.get("resource", {})
-    key = resource.get("key")
+    resource = request["resource"]
+    key = resource["key"]
+    content_type = resource.get("content_type")
 
-    params = {"Bucket": bucket, "Key": key}
-    if resource.get("content_type"):
-        params["ResponseContentType"] = resource["content_type"]
-
-    session = get_session()
-
-    async with session.create_client(
-        "s3",
-        region_name=config.region_name,
-        aws_access_key_id=config.aws_access_key_id,
-        aws_secret_access_key=config.aws_secret_access_key,
-        endpoint_url=config.minio_endpoint,
-    ) as client:
-        get_presigned_url = await client.generate_presigned_url(
-            "get_object",
-            Params=params,
-            ExpiresIn=config.link_ttl,
-        )
+    get_presigned_url = await generate_signed_url(bucket, key, "GET", content_type=content_type)
 
     return web.json_response(
         {
@@ -115,30 +86,30 @@ async def generate_download_url_op(
     )
 
 
+async def generate_signed_url(
+    bucket: str, key: str, method: str, content_type: str | None = None
+) -> str:
+    if config.signing_mode == config.GCS_IMPERSONATION:
+        return await gcs_provider.generate_signed_url(
+            bucket, key, method, content_type=content_type
+        )
+    return await s3_provider.generate_signed_url(bucket, key, method, content_type=content_type)
+
+
 @sdk.operation(["POST"], ["fhir", "$generate-download-headers"], request_schema=download_schema)
 @sdk.operation(["POST"], ["$generate-download-headers"], request_schema=download_schema)
 async def generate_download_headers_op(
     _operation: SDKOperation, request: SDKOperationRequest
 ) -> web.Response:
     bucket = config.aws_bucket
-    key = request.get("resource", {}).get("key")
+    key = request["resource"]["key"]
 
-    url = f"{config.minio_endpoint}/{bucket}/{key}"
-    credentials = Credentials(
-        access_key=config.aws_access_key_id,
-        secret_key=config.aws_secret_access_key,
-    )
-    headers = {
-        "x-amz-content-sha256": "UNSIGNED-PAYLOAD",
-    }
+    headers = await generate_download_headers(bucket, key)
 
-    aws_request = AWSRequest(
-        method="GET",
-        url=url,
-        headers=headers,
-    )
+    return web.json_response(headers)
 
-    signer = SigV4Auth(credentials, "s3", config.region_name)
-    signer.add_auth(aws_request)
 
-    return web.json_response(dict(aws_request.headers))
+async def generate_download_headers(bucket: str, key: str) -> dict[str, str]:
+    if config.signing_mode == config.GCS_IMPERSONATION:
+        return await gcs_provider.generate_download_headers(bucket, key)
+    return s3_provider.generate_download_headers(bucket, key)
