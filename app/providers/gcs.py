@@ -6,6 +6,7 @@ from urllib.parse import quote
 
 from google.auth import default as google_auth_default
 from google.auth import iam as google_auth_iam
+from google.auth.credentials import Credentials
 from google.auth.transport.requests import Request as GoogleAuthRequest
 from google.cloud import storage
 
@@ -21,24 +22,52 @@ def get_client() -> storage.Client:
     return storage.Client()
 
 
+@lru_cache(maxsize=1)
+def get_ambient_credentials() -> Credentials:
+    credentials, _ = google_auth_default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+    return credentials
+
+
+def get_signing_identity() -> tuple[Credentials, str]:
+    # storage.Client()'s own credentials aren't Signing-capable under real Workload
+    # Identity (only google.auth.credentials.Signing subclasses are, and ambient
+    # Compute Engine credentials aren't one) — blob.generate_signed_url() needs an
+    # explicit service_account_email + access_token to sign via IAM signBlob instead.
+    credentials = get_ambient_credentials()
+    if not credentials.valid:
+        credentials.refresh(GoogleAuthRequest())
+    service_account_email = getattr(credentials, "service_account_email", None)
+    if not service_account_email:
+        raise RuntimeError(
+            "gcs-impersonation signing requires Compute Engine (Workload Identity) credentials"
+        )
+
+    return credentials, service_account_email
+
+
 async def generate_signed_url(
     bucket: str, key: str, method: str, content_type: str | None = None
 ) -> str:
-    blob = get_client().bucket(bucket).blob(key)
     sign_kwargs = (
-        {"content_type": content_type} if method == "PUT" else {"response_type": content_type}
+        {"content_type": content_type}
+        if method == "PUT"
+        else ({"response_type": content_type} if content_type else {})
     )
 
-    loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(
-        None,
-        lambda: blob.generate_signed_url(
+    def sign() -> str:
+        credentials, service_account_email = get_signing_identity()
+        blob = get_client().bucket(bucket).blob(key)
+        return blob.generate_signed_url(
             version="v4",
             expiration=timedelta(seconds=config.link_ttl),
             method=method,
+            service_account_email=service_account_email,
+            access_token=credentials.token,
             **sign_kwargs,
-        ),
-    )
+        )
+
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, sign)
 
 
 async def generate_download_headers(bucket: str, key: str) -> dict[str, str]:
@@ -51,15 +80,8 @@ def sign_download_headers(bucket: str, key: str) -> dict[str, str]:
     # mechanism generate_signed_url uses for query-string signed URLs, but as an
     # Authorization header. Valid ~15 minutes around x-goog-date, matching the original
     # SigV4-header contract this operation was built around.
-    credentials, _ = google_auth_default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
-    request = GoogleAuthRequest()
-    credentials.refresh(request)
-    service_account_email = getattr(credentials, "service_account_email", None)
-    if not service_account_email:
-        raise RuntimeError(
-            "gcs-impersonation signing requires Compute Engine (Workload Identity) credentials"
-        )
-    signer = google_auth_iam.Signer(request, credentials, service_account_email)
+    credentials, service_account_email = get_signing_identity()
+    signer = google_auth_iam.Signer(GoogleAuthRequest(), credentials, service_account_email)
 
     now = datetime.now(UTC)
     date_stamp = now.strftime("%Y%m%d")

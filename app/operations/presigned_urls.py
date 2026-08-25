@@ -49,8 +49,11 @@ async def generate_upload_url_op(
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
     filename = resource.get("filename", "file.txt")
     content_type = resource.get("content_type") or "application/octet-stream"
-    name, extension = filename.rsplit(".", 1)
-    filename_with_timestamp = f"{name}-{timestamp}.{extension}"
+    if "." in filename:
+        name, extension = filename.rsplit(".", 1)
+        filename_with_timestamp = f"{name}-{timestamp}.{extension}"
+    else:
+        filename_with_timestamp = f"{filename}-{timestamp}"
     folder = config.bucket_prefix
     key = f"{folder}/{filename_with_timestamp}"
 
