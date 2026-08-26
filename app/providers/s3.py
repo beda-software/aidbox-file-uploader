@@ -4,6 +4,7 @@ from botocore.awsrequest import AWSRequest
 from botocore.credentials import Credentials
 
 from app import config
+from app.providers import DownloadHeaders
 
 
 async def generate_signed_url(
@@ -38,7 +39,7 @@ async def generate_signed_url(
         )
 
 
-def generate_download_headers(bucket: str, key: str) -> dict[str, str]:
+def generate_download_headers(bucket: str, key: str) -> DownloadHeaders:
     url = f"{config.minio_endpoint}/{bucket}/{key}"
     credentials = Credentials(
         access_key=config.aws_access_key_id,
@@ -57,4 +58,4 @@ def generate_download_headers(bucket: str, key: str) -> dict[str, str]:
     signer = SigV4Auth(credentials, "s3", config.region_name)
     signer.add_auth(aws_request)
 
-    return dict(aws_request.headers)
+    return {"url": url, "headers": dict(aws_request.headers)}

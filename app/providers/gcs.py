@@ -11,6 +11,7 @@ from google.auth.transport.requests import Request as GoogleAuthRequest
 from google.cloud import storage
 
 from app import config
+from app.providers import DownloadHeaders
 
 GCS_HOST = "storage.googleapis.com"
 
@@ -70,12 +71,12 @@ async def generate_signed_url(
     return await loop.run_in_executor(None, sign)
 
 
-async def generate_download_headers(bucket: str, key: str) -> dict[str, str]:
+async def generate_download_headers(bucket: str, key: str) -> DownloadHeaders:
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, sign_download_headers, bucket, key)
 
 
-def sign_download_headers(bucket: str, key: str) -> dict[str, str]:
+def sign_download_headers(bucket: str, key: str) -> DownloadHeaders:
     # Native GCS header-based V4 signing (GOOG4-RSA-SHA256) via IAM signBlob — the same
     # mechanism generate_signed_url uses for query-string signed URLs, but as an
     # Authorization header. Valid ~15 minutes around x-goog-date, matching the original
@@ -105,10 +106,13 @@ def sign_download_headers(bucket: str, key: str) -> dict[str, str]:
     credential = f"{service_account_email}/{credential_scope}"
 
     return {
-        "Authorization": (
-            f"GOOG4-RSA-SHA256 Credential={credential},"
-            f"SignedHeaders={signed_headers},Signature={signature}"
-        ),
-        "x-goog-date": timestamp,
-        "x-goog-content-sha256": "UNSIGNED-PAYLOAD",
+        "url": f"https://{GCS_HOST}{canonical_uri}",
+        "headers": {
+            "Authorization": (
+                f"GOOG4-RSA-SHA256 Credential={credential},"
+                f"SignedHeaders={signed_headers},Signature={signature}"
+            ),
+            "x-goog-date": timestamp,
+            "x-goog-content-sha256": "UNSIGNED-PAYLOAD",
+        },
     }

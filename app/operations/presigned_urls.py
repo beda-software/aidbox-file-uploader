@@ -1,12 +1,24 @@
 from datetime import datetime
+from typing import TypedDict
 
 from aidbox_python_sdk.types import SDKOperation, SDKOperationRequest
 from aiohttp import web
 
 from app import config
+from app.providers import DownloadHeaders
 from app.providers import gcs as gcs_provider
 from app.providers import s3 as s3_provider
 from app.sdk import sdk
+
+
+class UploadUrlResponse(TypedDict):
+    filename: str
+    put_presigned_url: str
+
+
+class DownloadUrlResponse(TypedDict):
+    get_presigned_url: str
+
 
 upload_schema = {
     "required": [],
@@ -59,12 +71,11 @@ async def generate_upload_url_op(
 
     put_presigned_url = await generate_signed_url(bucket, key, "PUT", content_type=content_type)
 
-    return web.json_response(
-        {
-            "filename": key,
-            "put_presigned_url": put_presigned_url,
-        }
-    )
+    response: UploadUrlResponse = {
+        "filename": key,
+        "put_presigned_url": put_presigned_url,
+    }
+    return web.json_response(response)
 
 
 @sdk.operation(["POST"], ["fhir", "$generate-download-url"], request_schema=download_schema)
@@ -79,11 +90,8 @@ async def generate_download_url_op(
 
     get_presigned_url = await generate_signed_url(bucket, key, "GET", content_type=content_type)
 
-    return web.json_response(
-        {
-            "get_presigned_url": get_presigned_url,
-        }
-    )
+    response: DownloadUrlResponse = {"get_presigned_url": get_presigned_url}
+    return web.json_response(response)
 
 
 async def generate_signed_url(
@@ -104,12 +112,12 @@ async def generate_download_headers_op(
     bucket = config.aws_bucket
     key = request["resource"]["key"]
 
-    headers = await generate_download_headers(bucket, key)
+    result = await generate_download_headers(bucket, key)
 
-    return web.json_response(headers)
+    return web.json_response(result)
 
 
-async def generate_download_headers(bucket: str, key: str) -> dict[str, str]:
+async def generate_download_headers(bucket: str, key: str) -> DownloadHeaders:
     if config.signing_mode == config.GCS_IMPERSONATION:
         return await gcs_provider.generate_download_headers(bucket, key)
     return s3_provider.generate_download_headers(bucket, key)

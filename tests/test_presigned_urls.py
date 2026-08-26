@@ -63,14 +63,18 @@ async def test_generate_download_url_requires_key(aidbox_client: AsyncAidboxClie
 
 
 async def test_generate_download_headers(aidbox_client: AsyncAidboxClient) -> None:
-    with patch(GENERATE_DOWNLOAD_HEADERS, return_value={"Authorization": "test-signature"}) as mock:
+    mocked_result = {
+        "url": "https://example.com/photo.jpg",
+        "headers": {"Authorization": "test-signature"},
+    }
+    with patch(GENERATE_DOWNLOAD_HEADERS, return_value=mocked_result) as mock:
         output = await aidbox_client.execute(
             "$generate-download-headers",
             method="POST",
             data={"key": "photo.jpg"},
         )
 
-    assert output == {"Authorization": "test-signature"}
+    assert output == mocked_result
     mock.assert_awaited_once_with(config.aws_bucket, "photo.jpg")
 
 
