@@ -2,7 +2,9 @@ name: aidbox-python-sdk-example
 services:
   app:
     image: ${BUILD_IMAGE}
-    build: .
+    build:
+      context: .
+      target: dev
     env_file:
       - .env
     volumes:

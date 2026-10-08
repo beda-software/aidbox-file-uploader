@@ -1,3 +1,10 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+!.env.tests.local.example
+
 __pycache__
 .mypy_cache
 .pytest_cache

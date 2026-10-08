@@ -27,7 +27,9 @@ services:
       retries: 50
   app:
     image: ${BUILD_IMAGE}
-    build: .
+    build:
+      context: .
+      target: dev
     depends_on:
       aidbox:
         condition: service_healthy
